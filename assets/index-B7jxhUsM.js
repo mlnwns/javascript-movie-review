@@ -113,9 +113,13 @@ const createElementWithAttributes = ({
   }
   if (Array.isArray(children) && children.length) {
     const fragment = document.createDocumentFragment();
-    children.forEach(
-      (child) => fragment.append(createElementWithAttributes(child))
-    );
+    children.forEach((child) => {
+      if (child instanceof HTMLElement) {
+        fragment.append(child);
+      } else {
+        fragment.append(createElementWithAttributes(child));
+      }
+    });
     element.append(fragment);
   }
   return element;
@@ -181,9 +185,56 @@ const backgroundContainer = createElementWithAttributes({
     }
   ]
 });
+function $(selector, scope = document) {
+  if (!selector) throw new Error("No selector provided");
+  return scope.querySelector(selector);
+}
+const handleError = (error) => {
+  if (error instanceof Error) {
+    const $main = $("main");
+    $main == null ? void 0 : $main.replaceChildren();
+    const $backgroundContainer = $(".background-container");
+    $backgroundContainer == null ? void 0 : $backgroundContainer.remove();
+    const $errorContainer = createElementWithAttributes({
+      tag: "div",
+      className: "error-container",
+      children: [
+        { tag: "h1", textContent: `${error.message} 새로고침 해주세요!` }
+      ]
+    });
+    $main == null ? void 0 : $main.append($errorContainer);
+  }
+};
+const skeletonContainer = (count) => {
+  const $skeletonContainer = createElementWithAttributes({
+    tag: "section",
+    className: "skeleton-container",
+    children: [
+      {
+        tag: "ul",
+        className: "skeleton-thumbnail-list",
+        children: Array.from({ length: count }, () => ({
+          tag: "li",
+          className: "skeleton-movie",
+          children: [
+            {
+              tag: "div",
+              className: "skeleton skeleton-thumbnail"
+            },
+            {
+              tag: "div",
+              className: "skeleton skeleton-desc"
+            }
+          ]
+        }))
+      }
+    ]
+  });
+  return $skeletonContainer;
+};
 const noImage = "/javascript-movie-review/images/no_image.png";
 const movieItem = (movie) => {
-  return {
+  const movieItemOptions = {
     tag: "li",
     className: "item",
     children: [
@@ -221,6 +272,7 @@ const movieItem = (movie) => {
       }
     ]
   };
+  return createElementWithAttributes(movieItemOptions);
 };
 const movieList = (movies) => {
   const $movieList = createElementWithAttributes({
@@ -229,33 +281,6 @@ const movieList = (movies) => {
     children: movies.map((movie) => movieItem(movie))
   });
   return $movieList;
-};
-const skeletonContainer = (count) => {
-  const $skeletonContainer = createElementWithAttributes({
-    tag: "section",
-    className: "skeleton-container",
-    children: [
-      {
-        tag: "ul",
-        className: "skeleton-thumbnail-list",
-        children: Array.from({ length: count }, () => ({
-          tag: "li",
-          className: "skeleton-movie",
-          children: [
-            {
-              tag: "div",
-              className: "skeleton skeleton-thumbnail"
-            },
-            {
-              tag: "div",
-              className: "skeleton skeleton-desc"
-            }
-          ]
-        }))
-      }
-    ]
-  });
-  return $skeletonContainer;
 };
 const MAX_PAGES = 500;
 const movieContainer = (movieListTitle, movieData, loadMoreCallback) => {
@@ -294,6 +319,7 @@ const movieContainer = (movieListTitle, movieData, loadMoreCallback) => {
     return $movieContainer;
   }
   const $movieList = movieList(results);
+  $movieContainer.append($movieList);
   const $seeMoreButton = createElementWithAttributes({
     tag: "button",
     textContent: "더보기",
@@ -304,16 +330,17 @@ const movieContainer = (movieListTitle, movieData, loadMoreCallback) => {
     pageNumber += 1;
     const $skeleton = skeletonContainer(20);
     $movieContainer.insertBefore($skeleton, $seeMoreButton);
-    const { results: results2, total_pages: total_pages2 } = await loadMoreCallback(pageNumber);
-    if (pageNumber === total_pages2 || pageNumber === MAX_PAGES) {
+    const { results: newResults } = await loadMoreCallback(pageNumber);
+    newResults.forEach((movie) => {
+      const $movieItem = movieItem(movie);
+      $movieList.append($movieItem);
+    });
+    $skeleton.remove();
+    if (pageNumber === total_pages || pageNumber === MAX_PAGES) {
       $seeMoreButton.remove();
     }
-    $skeleton.remove();
-    const $newMovieList = movieList(results2);
-    $movieList.append(...$newMovieList.children);
   });
-  $movieContainer.append($movieList);
-  if (pageNumber !== total_pages) {
+  if (pageNumber < total_pages && pageNumber < MAX_PAGES) {
     $movieContainer.append($seeMoreButton);
   }
   return $movieContainer;
@@ -324,10 +351,6 @@ const skeletonContainerTitle = () => {
     className: "skeleton skeleton-container-title"
   });
 };
-function $(selector, scope = document) {
-  if (!selector) throw new Error("No selector provided");
-  return scope.querySelector(selector);
-}
 const onSearch = async (event) => {
   var _a;
   if (!(event.target instanceof HTMLFormElement)) return;
@@ -335,37 +358,25 @@ const onSearch = async (event) => {
   try {
     const formData = new FormData(event.target);
     const searchKeyword = formData.get("search-bar");
-    if (typeof searchKeyword === "string") {
-      const $main = $("main");
-      (_a = $(".movie-container")) == null ? void 0 : _a.remove();
-      const $skeleton = skeletonContainer(20);
-      $skeleton.prepend(skeletonContainerTitle());
-      $main == null ? void 0 : $main.append($skeleton);
-      const { results, page, total_pages, total_results } = await getSearchedMovies(searchKeyword);
-      $skeleton.remove();
-      const loadMoreCallback = async (pageNumber) => await getSearchedMovies(searchKeyword, pageNumber);
-      const $searchedMovieContainer = movieContainer(
-        `"${searchKeyword}" 검색 결과`,
-        { results, page, total_pages, total_results },
-        loadMoreCallback
-      );
-      $main == null ? void 0 : $main.append($searchedMovieContainer);
+    if (typeof searchKeyword !== "string" || searchKeyword.length === 0) {
+      return;
     }
+    const $main = $("main");
+    (_a = $(".movie-container")) == null ? void 0 : _a.remove();
+    const $skeleton = skeletonContainer(20);
+    $skeleton.prepend(skeletonContainerTitle());
+    $main == null ? void 0 : $main.append($skeleton);
+    const { results, page, total_pages, total_results } = await getSearchedMovies(searchKeyword);
+    $skeleton.remove();
+    const loadMoreCallback = async (pageNumber) => await getSearchedMovies(searchKeyword, pageNumber);
+    const $searchedMovieContainer = movieContainer(
+      `"${searchKeyword}" 검색 결과`,
+      { results, page, total_pages, total_results },
+      loadMoreCallback
+    );
+    $main == null ? void 0 : $main.append($searchedMovieContainer);
   } catch (error) {
-    if (error instanceof Error) {
-      const $main = $("main");
-      $main == null ? void 0 : $main.replaceChildren();
-      const $backgroundContainer = $(".background-container");
-      $backgroundContainer == null ? void 0 : $backgroundContainer.remove();
-      const $errorContainer = createElementWithAttributes({
-        tag: "div",
-        className: "error-container",
-        children: [
-          { tag: "h1", textContent: `${error.message} 새로고침 해주세요!` }
-        ]
-      });
-      $main == null ? void 0 : $main.append($errorContainer);
-    }
+    handleError(error);
   }
 };
 const initializeMovie = async () => {
@@ -373,35 +384,29 @@ const initializeMovie = async () => {
   const $skeleton = skeletonContainer(20);
   $skeleton.prepend(skeletonContainerTitle());
   $main == null ? void 0 : $main.append($skeleton);
-  const { results, page, total_pages, total_results } = await getPopularMovies();
-  $skeleton.remove();
-  const loadMoreCallback = async (pageNumber) => await getPopularMovies(pageNumber);
-  const $movieContainer = movieContainer(
-    "지금 인기 있는 영화",
-    { results, total_pages, total_results },
-    loadMoreCallback
-  );
-  $main == null ? void 0 : $main.append($movieContainer);
+  try {
+    const { results, page, total_pages, total_results } = await getPopularMovies();
+    $skeleton.remove();
+    const loadMoreCallback = async (pageNumber) => await getPopularMovies(pageNumber);
+    const $movieContainer = movieContainer(
+      "지금 인기 있는 영화",
+      { results, page, total_pages, total_results },
+      loadMoreCallback
+    );
+    $main == null ? void 0 : $main.append($movieContainer);
+  } catch (error) {
+    handleError(error);
+  }
 };
 const $header = $("header");
 $header == null ? void 0 : $header.append(backgroundContainer);
-try {
-  initializeMovie();
-  const $searchBar = $("#search-bar-container");
-  $searchBar == null ? void 0 : $searchBar.addEventListener("submit", onSearch);
-} catch (error) {
-  if (error instanceof Error) {
-    const $main = $("main");
-    $main == null ? void 0 : $main.replaceChildren();
-    const $backgroundContainer = $(".background-container");
-    $backgroundContainer == null ? void 0 : $backgroundContainer.remove();
-    const $errorContainer = createElementWithAttributes({
-      tag: "div",
-      className: "error-container",
-      children: [
-        { tag: "h1", textContent: `${error.message} 새로고침 해주세요!` }
-      ]
-    });
-    $main == null ? void 0 : $main.append($errorContainer);
+const main = async () => {
+  try {
+    await initializeMovie();
+    const $searchBar = $("#search-bar-container");
+    $searchBar == null ? void 0 : $searchBar.addEventListener("submit", onSearch);
+  } catch (error) {
+    handleError(error);
   }
-}
+};
+main();
