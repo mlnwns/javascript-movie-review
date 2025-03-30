@@ -127,6 +127,11 @@ table {
   border-collapse: collapse;
   border-spacing: 0;
 }
+
+input:-webkit-autofill {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: #fff;
+}
 :root {
   --color-white: #ffffff;
   --color-lightblue-90: #0da9fd;
@@ -169,6 +174,7 @@ main {
 
 .star {
   width: 24px;
+  cursor: pointer;
 }
 
 button {
@@ -185,8 +191,12 @@ button.primary {
 }
 
 #wrap {
-  min-width: 1440px;
   background-color: var(--color-bluegray-100);
+  min-width: 428px;
+
+  @media screen and (max-width: 1440px) {
+    width: 100%;
+  }
 }
 
 #wrap h2 {
@@ -198,6 +208,11 @@ button.primary {
 .container {
   max-width: 1280px;
   margin: 0 auto;
+
+  @media screen and (max-width: 1280px) {
+    width: 100%;
+    padding: 0 16px;
+  }
 }
 
 .background-container {
@@ -233,6 +248,7 @@ button.primary {
   z-index: 2;
   max-width: 1280px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .search-box {
@@ -246,13 +262,13 @@ button.primary {
 
 .top-bar {
   width: 100%;
-  max-width: 1280px;
   position: absolute;
+  margin-top: 40px;
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: space-between;
   align-items: center;
-  padding: 48px 374px 72px 84px;
+  gap: 16px;
 }
 
 .top-rated-movie {
@@ -291,6 +307,10 @@ span.rate-value {
 
 .movie-container {
   width: 1280px;
+
+  @media screen and (max-width: 1280px) {
+    width: 100%;
+  }
 }
 
 .no_search_container {
@@ -317,7 +337,7 @@ span.rate-value {
   justify-content: center;
   border-radius: 8px;
   background: var(--color-lightblue-90);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--color-white);
 }
@@ -337,6 +357,10 @@ footer.footer p:not(:last-child) {
 }
 
 .error-container {
+  margin-top: 150px;
+}
+
+.no-background {
   margin-top: 150px;
 }
 :root {
@@ -397,16 +421,195 @@ footer.footer p:not(:last-child) {
   --color-242a32: #242a32;
 }
 
+/* modal.css */
+
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+.modal::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.modal:focus {
+  outline: none;
+}
+
+.modal {
+  border: none;
+  background-color: transparent;
+  border-radius: 16px;
+  color: white;
+  z-index: 2;
+  width: 1000px;
+  padding: 0;
+
+  @media screen and (max-width: 1024px) {
+    margin: auto 0 0 0;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+.close-modal {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  top: 24px;
+  right: 24px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.modal-container {
+  display: flex;
+  padding: 20px;
+  background-color: var(--color-bluegray-90);
+  border-radius: 16px;
+
+  @media screen and (max-width: 1024px) {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.modal-image img {
+  width: 380px;
+  border-radius: 16px;
+
+  @media screen and (max-width: 1024px) {
+    width: 180px;
+    margin-bottom: 32px;
+  }
+
+  @media screen and (max-width: 708px) {
+    display: none;
+  }
+}
+
+.modal-description {
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px;
+  margin-left: 16px;
+  line-height: 1.6rem;
+  overflow-wrap: break-word;
+}
+
+.modal-description .rate > img {
+  position: relative;
+  top: 5px;
+}
+
+.modal-description > *:not(:last-child) {
+  margin-bottom: 24px;
+}
+
+.modal-description h2 {
+  font-size: 2rem;
+  padding-right: 22px;
+  line-height: 36px;
+}
+
+.movie-info-container {
+  border-bottom: 1px solid #67788e;
+}
+
+.my-star-container {
+  border-bottom: 1px solid #67788e;
+}
+
+.modal-subtitle {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.detail-overview {
+  max-height: 430px;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 145%;
+}
+
+.category {
+  font-size: 20px;
+  font-weight: 300;
+  margin: 16px 0 8px;
+}
+
+.rate {
+  margin-bottom: 16px;
+}
+
+.average-rate {
+  font-size: 20px;
+}
+
+.rate-text {
+  font-size: 20px;
+  font-weight: 300;
+  color: white;
+  margin-right: 16px;
+}
+
+.my-star-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.score-text {
+  font-size: 24px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.score {
+  color: #95a1b2;
+  font-size: 24px;
+  font-weight: 600;
+}
+:root {
+  --color-white: #ffffff;
+  --color-lightblue-90: #0da9fd;
+  --color-bluegray-100: #242a32;
+  --color-bluegray-80: #39414d;
+  --color-bluegray-10: #e0e6ed;
+  --color-bluegray-30: #a6b1c3;
+  --color-bluegray-90: #2f3844;
+  --color-gray-300: #d1d3d4;
+  --color-yellow: #ffc700;
+  --color-ffffff: #ffffff;
+  --color-242a32: #242a32;
+}
+
 .thumbnail-list {
-  margin: 0 auto 56px;
   display: grid;
-  grid-template-columns: repeat(5, 200px);
-  gap: 70px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 auto 56px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 30px;
+  justify-content: center;
+
+  @media screen and (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 0));
+  }
 }
 
 .thumbnail {
-  width: 200px;
-  height: 300px;
+  width: 100%;
   border-radius: 8px;
 }
 
@@ -440,6 +643,10 @@ p.rate > span {
   position: relative;
   width: 525px;
   align-items: center;
+
+  @media screen and (max-width: 768px) {
+    width: 70%;
+  }
 }
 
 .search-bar {
@@ -489,6 +696,7 @@ p.rate > span {
 
 .skeleton-container {
   width: 1280px;
+  max-width: 100%;
 }
 
 .skeleton-container-title {
@@ -497,10 +705,19 @@ p.rate > span {
 }
 
 .skeleton-thumbnail-list {
-  margin: 0 auto 56px;
   display: grid;
-  grid-template-columns: repeat(5, 200px);
-  gap: 70px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 auto 56px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 30px;
+  justify-content: center;
+
+  @media screen and (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 0));
+    gap: 20px;
+  }
 }
 
 .skeleton-movie {
@@ -509,16 +726,34 @@ p.rate > span {
 }
 
 .skeleton-thumbnail {
-  width: 200px;
+  width: 100%;
   height: 300px;
   border-radius: 8px;
+
+  @media screen and (max-width: 1024px) {
+    height: 348px;
+  }
+
+  @media screen and (max-width: 768px) {
+    height: 274px;
+  }
+
+  @media screen and (max-width: 480px) {
+    width: 200px;
+    height: 300px;
+  }
 }
 
 .skeleton-desc {
-  width: 200px;
+  width: 100%;
   height: 20px;
   position: relative;
   margin-top: 10px;
   margin-bottom: 4px;
   line-height: 1.2rem;
+
+  @media screen and (max-width: 480px) {
+    width: 200px;
+    height: 35px;
+  }
 }

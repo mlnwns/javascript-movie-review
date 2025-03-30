@@ -35,8 +35,8 @@
     fetch(link.href, fetchOpts);
   }
 })();
-const getPopularMovies = async (page = 1) => {
-  const url = `https://api.themoviedb.org/3/movie/popular?language=ko-KR&page=${page}`;
+const fetchMovies = async (endpoint) => {
+  const url = `https://api.themoviedb.org/3/${endpoint}`;
   const options = {
     method: "GET",
     headers: {
@@ -50,45 +50,21 @@ const getPopularMovies = async (page = 1) => {
       throw new Error("성공적으로 받아오지 못했습니다.");
     }
     const response = await res.json();
-    return response ?? {
-      results: [],
-      page: 1,
-      total_pages: 1,
-      total_results: 0
-    };
+    return response ?? { results: [], page: 1, total_pages: 1, total_results: 0 };
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(error.message);
     }
   }
 };
+const getPopularMovies = async (page = 1) => {
+  return fetchMovies(`movie/popular?language=ko-KR&page=${page}`);
+};
 const getSearchedMovies = async (searchKeyword, pageNumber = 1) => {
   const query = encodeURIComponent(searchKeyword);
-  const url = `https://api.themoviedb.org/3/search/movie?query=${query}&include_adult=false&language=ko-KR&page=${pageNumber}`;
-  const options = {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${"eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0N2NlOWYwOTc1NzY1ZjZkYjVmMzhlYWJkYTU3YmY4YyIsIm5iZiI6MTc0MjI2MjUwNi4yNjU5OTk4LCJzdWIiOiI2N2Q4ZDBlYTAwOWVhNjJiZGFlZWEwMDYiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.IaRoj_pm6ULc6XauMWFsROQxyJmjq8M029BDvv0H2Gc"}`
-    }
-  };
-  try {
-    const res = await fetch(url, options);
-    if (!res.ok) {
-      throw new Error("성공적으로 받아오지 못했습니다.");
-    }
-    const response = await res.json();
-    return response ?? {
-      results: [],
-      page: 1,
-      total_pages: 1,
-      total_results: 0
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(error.message);
-    }
-  }
+  return fetchMovies(
+    `search/movie?query=${query}&include_adult=false&language=ko-KR&page=${pageNumber}`
+  );
 };
 const createElementWithAttributes = ({
   tag,
@@ -173,11 +149,6 @@ const backgroundContainer = createElementWithAttributes({
               tag: "div",
               className: "title",
               textContent: "인사이드 아웃2"
-            },
-            {
-              tag: "button",
-              className: "primary detail",
-              textContent: "자세히 보기"
             }
           ]
         }
@@ -232,6 +203,189 @@ const skeletonContainer = (count) => {
   });
   return $skeletonContainer;
 };
+const getDetailMovies = async (id) => {
+  return fetchMovies(`movie/${id}?language=ko-KR`);
+};
+const handleModalEvents = ($modal, closeButtonSelector = ".close-modal") => {
+  if (!$modal) return;
+  const closeModal = () => $modal.close();
+  $modal.addEventListener("click", (event) => {
+    if (event.target === $modal) {
+      closeModal();
+    }
+  });
+  const $closeButton = $(closeButtonSelector, $modal);
+  $closeButton == null ? void 0 : $closeButton.addEventListener("click", closeModal);
+};
+const SCORE_TEXT = {
+  2: "최악이에요",
+  4: "별로예요",
+  6: "보통이에요",
+  8: "재미있어요",
+  10: "명작이에요"
+};
+const createRatingBox = (movieId) => {
+  const savedRatings = JSON.parse(localStorage.getItem("rateValue") || "{}");
+  const initialScore = savedRatings[movieId] || 0;
+  const $scoreText = createElementWithAttributes({
+    tag: "span",
+    className: "score-text",
+    textContent: initialScore ? SCORE_TEXT[initialScore] : "0점"
+  });
+  const $score = createElementWithAttributes({
+    tag: "span",
+    className: "score",
+    textContent: `(${initialScore}/10)`
+  });
+  const $stars = Object.keys(SCORE_TEXT).map((score) => {
+    const starScore = Number(score);
+    const $star = createElementWithAttributes({
+      tag: "img",
+      className: "star",
+      attributes: { src: "./images/star_empty.png", alt: `${starScore}` }
+    });
+    $star.addEventListener("click", () => {
+      updateStars(starScore);
+      saveRating(movieId, starScore);
+    });
+    return $star;
+  });
+  const updateStars = (score) => {
+    $scoreText.textContent = SCORE_TEXT[score] || "0점";
+    $score.textContent = `(${score}/10)`;
+    $stars.forEach((star, index) => {
+      const starScore = (index + 1) * 2;
+      star.src = starScore <= score ? "./images/star_filled.png" : "./images/star_empty.png";
+    });
+  };
+  if (initialScore) updateStars(initialScore);
+  const saveRating = (movieId2, score) => {
+    const updatedRatings = {
+      ...JSON.parse(localStorage.getItem("rateValue") || "{}"),
+      [movieId2]: score
+    };
+    localStorage.setItem("rateValue", JSON.stringify(updatedRatings));
+  };
+  const starsWrapper = createElementWithAttributes({
+    tag: "div",
+    className: "stars-wrapper",
+    children: [...$stars]
+  });
+  const myStarText = createElementWithAttributes({
+    tag: "div",
+    className: "my-star-text",
+    children: [$scoreText, $score]
+  });
+  return createElementWithAttributes({
+    tag: "div",
+    className: "my-star-box",
+    children: [starsWrapper, myStarText]
+  });
+};
+const movieDetailModal = (detailMovie) => {
+  const genres = detailMovie.genres.map((genre) => genre.name).join(", ");
+  const releaseYear = new Date(detailMovie.release_date).getFullYear();
+  const $movieDetailModal = createElementWithAttributes({
+    tag: "div",
+    className: "modal-container",
+    children: [
+      {
+        tag: "button",
+        id: "closeModal",
+        className: "close-modal",
+        children: [
+          {
+            tag: "img",
+            attributes: { src: "./images/modal_button_close.png" }
+          }
+        ]
+      },
+      {
+        tag: "div",
+        className: "modal-image",
+        children: [
+          {
+            tag: "img",
+            attributes: {
+              src: `https://image.tmdb.org/t/p/original/${detailMovie.poster_path}`
+            }
+          }
+        ]
+      },
+      {
+        tag: "div",
+        className: "modal-description",
+        children: [
+          {
+            tag: "div",
+            className: "movie-info-container",
+            children: [
+              {
+                tag: "h2",
+                textContent: `${detailMovie.title}`
+              },
+              {
+                tag: "p",
+                className: "category",
+                textContent: `${releaseYear} · ${genres}`
+              },
+              {
+                tag: "p",
+                className: "rate",
+                children: [
+                  {
+                    tag: "p",
+                    className: "rate-text",
+                    textContent: "평점"
+                  },
+                  {
+                    tag: "img",
+                    className: "star",
+                    attributes: { src: "./images/star_filled.png" }
+                  },
+                  {
+                    tag: "span",
+                    className: "average-rate",
+                    textContent: String(detailMovie.vote_average).slice(0, 3)
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            tag: "div",
+            className: "my-star-container",
+            children: [
+              {
+                tag: "h4",
+                className: "modal-subtitle",
+                textContent: "내 별점"
+              },
+              createRatingBox(detailMovie.id)
+            ]
+          },
+          {
+            tag: "div",
+            className: "overview-container",
+            children: [
+              {
+                tag: "h4",
+                className: "modal-subtitle",
+                textContent: "줄거리"
+              },
+              {
+                tag: "p",
+                className: "detail-overview",
+                textContent: `${detailMovie.overview}`
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+  return $movieDetailModal;
+};
 const noImage = "/javascript-movie-review/images/no_image.png";
 const movieItem = (movie) => {
   const movieItemOptions = {
@@ -263,7 +417,7 @@ const movieItem = (movie) => {
               },
               {
                 tag: "span",
-                textContent: String(movie.vote_average)
+                textContent: String(movie.vote_average).slice(0, 3)
               }
             ]
           },
@@ -272,7 +426,15 @@ const movieItem = (movie) => {
       }
     ]
   };
-  return createElementWithAttributes(movieItemOptions);
+  const $movieItemOptions = createElementWithAttributes(movieItemOptions);
+  $movieItemOptions.addEventListener("click", async () => {
+    const $modal = $(".modal");
+    const detailMovie = await getDetailMovies(movie.id);
+    $modal.replaceChildren(movieDetailModal(detailMovie));
+    handleModalEvents($modal);
+    $modal.showModal();
+  });
+  return $movieItemOptions;
 };
 const movieList = (movies) => {
   const $movieList = createElementWithAttributes({
@@ -320,29 +482,50 @@ const movieContainer = (movieListTitle, movieData, loadMoreCallback) => {
   }
   const $movieList = movieList(results);
   $movieContainer.append($movieList);
-  const $seeMoreButton = createElementWithAttributes({
-    tag: "button",
-    textContent: "더보기",
-    className: "see-more"
-  });
-  let pageNumber = 1;
-  $seeMoreButton.addEventListener("click", async () => {
-    pageNumber += 1;
-    const $skeleton = skeletonContainer(20);
-    $movieContainer.insertBefore($skeleton, $seeMoreButton);
-    const { results: newResults } = await loadMoreCallback(pageNumber);
-    newResults.forEach((movie) => {
-      const $movieItem = movieItem(movie);
-      $movieList.append($movieItem);
-    });
-    $skeleton.remove();
-    if (pageNumber === total_pages || pageNumber === MAX_PAGES) {
-      $seeMoreButton.remove();
+  const $observerTarget = createElementWithAttributes({
+    tag: "div",
+    className: "observer-target",
+    attributes: {
+      style: "height: 10px; width: 100%;"
     }
   });
-  if (pageNumber < total_pages && pageNumber < MAX_PAGES) {
-    $movieContainer.append($seeMoreButton);
-  }
+  $movieContainer.append($observerTarget);
+  let pageNumber = 1;
+  let isLoading = false;
+  let hasMoreContent = pageNumber < total_pages && pageNumber < MAX_PAGES;
+  const observer = new IntersectionObserver(
+    async (entries) => {
+      const entry = entries[0];
+      if (entry.isIntersecting && !isLoading && hasMoreContent) {
+        isLoading = true;
+        pageNumber += 1;
+        const $skeleton = skeletonContainer(20);
+        $movieContainer.insertBefore($skeleton, $observerTarget);
+        try {
+          const { results: newResults } = await loadMoreCallback(pageNumber);
+          newResults.forEach((movie) => {
+            const $movieItem = movieItem(movie);
+            $movieList.append($movieItem);
+          });
+          hasMoreContent = pageNumber < total_pages && pageNumber < MAX_PAGES;
+          if (!hasMoreContent) {
+            observer.disconnect();
+          }
+        } catch (error) {
+          handleError(error);
+        } finally {
+          $skeleton.remove();
+          isLoading = false;
+        }
+      }
+    },
+    {
+      root: null,
+      rootMargin: "100px",
+      threshold: 0.1
+    }
+  );
+  observer.observe($observerTarget);
   return $movieContainer;
 };
 const skeletonContainerTitle = () => {
@@ -352,7 +535,7 @@ const skeletonContainerTitle = () => {
   });
 };
 const onSearch = async (event) => {
-  var _a;
+  var _a, _b;
   if (!(event.target instanceof HTMLFormElement)) return;
   event.preventDefault();
   try {
@@ -362,7 +545,9 @@ const onSearch = async (event) => {
       return;
     }
     const $main = $("main");
-    (_a = $(".movie-container")) == null ? void 0 : _a.remove();
+    (_a = $(".background-container")) == null ? void 0 : _a.remove();
+    $main == null ? void 0 : $main.classList.add("no-background");
+    (_b = $(".movie-container")) == null ? void 0 : _b.remove();
     const $skeleton = skeletonContainer(20);
     $skeleton.prepend(skeletonContainerTitle());
     $main == null ? void 0 : $main.append($skeleton);
@@ -400,7 +585,7 @@ const initializeMovie = async () => {
 };
 const $header = $("header");
 $header == null ? void 0 : $header.append(backgroundContainer);
-const main = async () => {
+const initializeApp = async () => {
   try {
     await initializeMovie();
     const $searchBar = $("#search-bar-container");
@@ -409,4 +594,4 @@ const main = async () => {
     handleError(error);
   }
 };
-main();
+initializeApp();
