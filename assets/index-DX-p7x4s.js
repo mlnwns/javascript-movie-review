@@ -72,7 +72,9 @@ const createElementWithAttributes = ({
   className = "",
   attributes = {},
   textContent = "",
-  children = []
+  children = [],
+  onload = () => {
+  }
 }) => {
   const element = document.createElement(tag);
   if (id) {
@@ -97,6 +99,9 @@ const createElementWithAttributes = ({
       }
     });
     element.append(fragment);
+  }
+  if (typeof onload === "function") {
+    element.onload = onload;
   }
   return element;
 };
@@ -215,7 +220,9 @@ const handleModalEvents = ($modal, closeButtonSelector = ".close-modal") => {
     }
   });
   const $closeButton = $(closeButtonSelector, $modal);
-  $closeButton == null ? void 0 : $closeButton.addEventListener("click", closeModal);
+  if ($closeButton instanceof HTMLButtonElement) {
+    $closeButton == null ? void 0 : $closeButton.addEventListener("click", closeModal);
+  }
 };
 const SCORE_TEXT = {
   2: "최악이에요",
@@ -230,7 +237,7 @@ const createRatingBox = (movieId) => {
   const $scoreText = createElementWithAttributes({
     tag: "span",
     className: "score-text",
-    textContent: initialScore ? SCORE_TEXT[initialScore] : "0점"
+    textContent: initialScore in SCORE_TEXT ? SCORE_TEXT[initialScore] : "0점"
   });
   const $score = createElementWithAttributes({
     tag: "span",
@@ -258,7 +265,7 @@ const createRatingBox = (movieId) => {
       star.src = starScore <= score ? "./images/star_filled.png" : "./images/star_empty.png";
     });
   };
-  if (initialScore) updateStars(initialScore);
+  if (initialScore in SCORE_TEXT) updateStars(initialScore);
   const saveRating = (movieId2, score) => {
     const updatedRatings = {
       ...JSON.parse(localStorage.getItem("rateValue") || "{}"),
@@ -282,6 +289,8 @@ const createRatingBox = (movieId) => {
     children: [starsWrapper, myStarText]
   });
 };
+const noImage = "/javascript-movie-review/images/no_image.png";
+const placeholderImage = "/javascript-movie-review/images/placeholder_poster.svg";
 const movieDetailModal = (detailMovie) => {
   const genres = detailMovie.genres.map((genre) => genre.name).join(", ");
   const releaseYear = new Date(detailMovie.release_date).getFullYear();
@@ -306,8 +315,15 @@ const movieDetailModal = (detailMovie) => {
         children: [
           {
             tag: "img",
+            onload: function() {
+              if (this instanceof HTMLImageElement === false) {
+                return;
+              }
+              this.src = detailMovie.poster_path === null ? noImage : `https://image.tmdb.org/t/p/original/${detailMovie.poster_path}`;
+            },
             attributes: {
-              src: `https://image.tmdb.org/t/p/original/${detailMovie.poster_path}`
+              src: placeholderImage,
+              alt: "movie poster"
             }
           }
         ]
@@ -386,7 +402,6 @@ const movieDetailModal = (detailMovie) => {
   });
   return $movieDetailModal;
 };
-const noImage = "/javascript-movie-review/images/no_image.png";
 const movieItem = (movie) => {
   const movieItemOptions = {
     tag: "li",
@@ -395,9 +410,14 @@ const movieItem = (movie) => {
       {
         tag: "img",
         className: "thumbnail",
+        onload: function() {
+          if (this instanceof HTMLImageElement === false) {
+            return;
+          }
+          this.src = movie.poster_path === null ? noImage : `https://image.tmdb.org/t/p/w440_and_h660_face${movie.poster_path}`;
+        },
         attributes: {
-          src: movie.poster_path === null ? noImage : `https://image.tmdb.org/t/p/w440_and_h660_face${movie.poster_path}`,
-          alt: movie.title
+          src: placeholderImage
         }
       },
       {
@@ -429,10 +449,12 @@ const movieItem = (movie) => {
   const $movieItemOptions = createElementWithAttributes(movieItemOptions);
   $movieItemOptions.addEventListener("click", async () => {
     const $modal = $(".modal");
-    const detailMovie = await getDetailMovies(movie.id);
-    $modal.replaceChildren(movieDetailModal(detailMovie));
-    handleModalEvents($modal);
-    $modal.showModal();
+    if ($modal instanceof HTMLDialogElement) {
+      const detailMovie = await getDetailMovies(movie.id);
+      $modal.replaceChildren(movieDetailModal(detailMovie));
+      handleModalEvents($modal);
+      $modal.showModal();
+    }
   });
   return $movieItemOptions;
 };
